@@ -7,9 +7,18 @@ from apscheduler.triggers.cron import CronTrigger
 from telegram import Bot
 import os
 from dotenv import load_dotenv
+from flask import Flask
+import threading
 
+app = Flask("bot")
+@app.route("/")
+def home():
+    return "WeatherBot is alive!"
 
+def run():
+    app.run(host="0.0.0.0", port=10000)
 
+threading.Thread(target=run).start()
 # ========== SOZLAMALAR ==========
 load_dotenv()  # .env fayldan ma'lumotlarni yuklaydi
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
