@@ -22,12 +22,17 @@ threading.Thread(target=run).start()
 # ========== SOZLAMALAR ==========
 load_dotenv()  # .env fayldan ma'lumotlarni yuklaydi
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
 OWM_API_KEY = os.getenv("OWM_API_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "Bekobod,UZ")
 TIMEZONE = pytz.timezone("Asia/Tashkent")  # ⚠️ MUHIM: pytz obyekt
 UNITS = "metric"
 LANG = "uz"
+
+# 🔹 Bir nechta chat ID larni .env orqali olish
+CHAT_IDS = os.getenv("CHAT_IDS", "")
+# Masalan .env faylda: CHAT_IDS=-1001234567890,-1009876543210,123456789
+CHAT_IDS = [int(x.strip()) for x in CHAT_IDS.split(",") if x.strip()]
+
 # ================================
 
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -47,8 +52,38 @@ def get_weather(city_name: str):
 
 
 def format_weather_message(data: dict):
+    # === Sana va joy ===
+    now = datetime.now(TIMEZONE)
+    sana = now.strftime("%d-%B %Y")  # masalan: 15-Oktyabr 2025
+    sana = sana.replace("January", "Yanvar").replace("February", "Fevral").replace("March", "Mart") \
+               .replace("April", "Aprel").replace("May", "May").replace("June", "Iyun") \
+               .replace("July", "Iyul").replace("August", "Avgust").replace("September", "Sentabr") \
+               .replace("October", "Oktabr").replace("November", "Noyabr").replace("December", "Dekabr")
+
     name = data.get("name")
-    weather = data["weather"][0]["description"].capitalize()
+
+    # === Ob-havo holati (tarjima) ===
+    weather_en = data["weather"][0]["main"].lower()
+    weather_map = {
+        "clear": "ochiq osmon",
+        "clouds": "bulutli",
+        "rain": "yomgʻir",
+        "drizzle": "mayda yomgʻir",
+        "thunderstorm": "momaqaldiroq",
+        "snow": "qor yogʻmoqda",
+        "mist": "tuman",
+        "fog": "tuman",
+        "haze": "tutunli",
+        "smoke": "tutun",
+        "dust": "changli havo",
+        "sand": "qumli havo",
+        "ash": "kul bosgan havo",
+        "squall": "shamol kuchaygan",
+        "tornado": "bo‘ron"
+    }
+    weather = weather_map.get(weather_en, data["weather"][0]["description"].capitalize())
+
+    # === Asosiy ma’lumotlar ===
     temp = data["main"]["temp"]
     feels = data["main"].get("feels_like")
     humidity = data["main"].get("humidity")
@@ -57,6 +92,7 @@ def format_weather_message(data: dict):
     sunset_ts = data.get("sys", {}).get("sunset")
 
     tz = TIMEZONE
+
     def ts_to_local(ts):
         if not ts:
             return "—"
@@ -66,16 +102,18 @@ def format_weather_message(data: dict):
     sunset = ts_to_local(sunset_ts)
     degree_sign = "°C" if UNITS == "metric" else "°F"
 
+    # === Yakuniy xabar ===
     msg = (
-        f"☁️ Ob-havo: *{name}*\n\n"
+        f"📅 *{sana}* kuni *{name}* shahrida kutilayotgan ob-havo maʼlumoti:\n\n"
         f"🔹 Holat: {weather}\n"
-        f"🌡 Havo: {temp}{degree_sign} (Tuyulishi: {feels}{degree_sign})\n"
+        f"🌡 Harorat: {temp}{degree_sign} (Tuyulishi: {feels}{degree_sign})\n"
         f"💧 Namlik: {humidity}%\n"
-        f"🌬 Shamol: {wind} m/s\n"
+        f"🌬 Shamol tezligi: {wind} m/s\n"
         f"🌅 Quyosh chiqishi: {sunrise}\n"
         f"🌇 Quyosh botishi: {sunset}\n\n"
         f"_Vaqt zonasi: Asia/Tashkent_"
     )
+
     return msg
 
 
