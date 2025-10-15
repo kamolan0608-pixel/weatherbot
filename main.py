@@ -48,6 +48,24 @@ def get_weather(city_name: str):
     r.raise_for_status()
     return r.json()
 
+
+def get_greeting(now):
+    hour = now.hour
+    if 5 <= hour < 11:
+        return (
+            "🌅 *Xayrli tong!*\n"
+            "Yangi kun boshlandi. Sizga unumli ishlar va iliq kayfiyat tilaymiz."
+        )
+    elif 11 <= hour < 18:
+        return (
+            "🌤 *Xayrli kun!* 🌞\n"
+        )
+    else:
+        return (
+            "🌙 *Xayrli oqshom!* 🌌\n"
+        )
+
+
 # === Xabar formatlash funksiyasi ===
 def format_weather_message(data: dict):
     now = datetime.now(TIMEZONE)
@@ -57,6 +75,8 @@ def format_weather_message(data: dict):
                .replace("July", "Iyul").replace("August", "Avgust").replace("September", "Sentabr") \
                .replace("October", "Oktabr").replace("November", "Noyabr").replace("December", "Dekabr")
 
+    soat = now.strftime("%H:%M")
+    
     name = data.get("name")
     weather_en = data["weather"][0]["main"].lower()
     weather_map = {
@@ -93,7 +113,10 @@ def format_weather_message(data: dict):
     sunset = ts_to_local(sunset_ts)
     degree_sign = "°C"
 
+    greeting = get_greeting(now)
+    
     msg = (
+    f"{greeting}\n\n"
     f"🌤 *{name}* shahrining ayni vaqtdagi ob-havo ma'lumotlari ({sana} -yil , soat {soat})\n\n"
     f"🔸 Havo holati: *{weather}*\n"
     f"🌡 Harorat: *{temp}{degree_sign}* (Tuyulishi: {feels}{degree_sign})\n"
@@ -121,7 +144,7 @@ async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
     # Har kuni 12:55 va 19:00 da yuborish
-    times = [(22, 40), (22, 50)]
+    times = [(23, 12), (23, 35)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
