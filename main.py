@@ -78,10 +78,10 @@ def format_weather_message(data: dict):
     }
     weather = weather_map.get(weather_en, data["weather"][0]["description"].capitalize())
 
-    temp = data["main"]["temp"]
-    feels = data["main"].get("feels_like")
+    temp = round(data["main"]["temp"])
+    feels = round(data["main"].get("feels_like"))
     humidity = data["main"].get("humidity")
-    wind = data.get("wind", {}).get("speed")
+    wind = round(data.get("wind", {}).get("speed", 0), 1)
     sunrise_ts = data.get("sys", {}).get("sunrise")
     sunset_ts = data.get("sys", {}).get("sunset")
 
@@ -94,15 +94,15 @@ def format_weather_message(data: dict):
     degree_sign = "°C"
 
     msg = (
-        f"📅 *{sana}* kuni *{name}* shahrida kutilayotgan ob-havo maʼlumoti:\n\n"
-        f"🔹 Holat: {weather}\n"
-        f"🌡 Harorat: {temp}{degree_sign} (Tuyulishi: {feels}{degree_sign})\n"
-        f"💧 Namlik: {humidity}%\n"
-        f"🌬 Shamol tezligi: {wind} m/s\n"
-        f"🌅 Quyosh chiqishi: {sunrise}\n"
-        f"🌇 Quyosh botishi: {sunset}\n\n"
-        f"_Vaqt zonasi: Asia/Tashkent_"
-    )
+    f"🌤 *{name}* shahrining ayni vaqtdagi ob-havo ma'lumotlari ({sana} -yil , soat {soat})\n\n"
+    f"🔸 Havo holati: *{weather}*\n"
+    f"🌡 Harorat: *{temp}{degree_sign}* (Tuyulishi: {feels}{degree_sign})\n"
+    f"💧 Namlik: {humidity}%\n"
+    f"🌬 Shamol: {wind} m/s\n"
+    f"🌅 Quyosh chiqishi: {sunrise}\n"
+    f"🌇 Quyosh botishi: {sunset}\n\n"
+    f"📍 *Tashkent vaqti bo‘yicha ma’lumot*"
+)
 
     return msg
 
@@ -121,7 +121,7 @@ async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
     # Har kuni 12:55 va 19:00 da yuborish
-    times = [(21, 20), (21, 30)]
+    times = [(22, 40), (22, 50)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
