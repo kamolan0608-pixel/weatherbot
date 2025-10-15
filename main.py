@@ -10,7 +10,9 @@ from dotenv import load_dotenv
 from flask import Flask
 import threading
 
+# === Flask Web Server (Render.com uptime uchun) ===
 app = Flask("bot")
+
 @app.route("/")
 def home():
     return "WeatherBot is alive!"
@@ -19,23 +21,21 @@ def run():
     app.run(host="0.0.0.0", port=10000)
 
 threading.Thread(target=run).start()
-# ========== SOZLAMALAR ==========
-load_dotenv()  # .env fayldan ma'lumotlarni yuklaydi
+
+# === .env dan sozlamalar ===
+load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_IDS = os.getenv("CHAT_IDS")
+CHAT_ID = int(os.getenv("CHAT_ID"))  # faqat bitta ID
 OWM_API_KEY = os.getenv("OWM_API_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "Bekobod,UZ")
-TIMEZONE = pytz.timezone("Asia/Tashkent")  # ⚠️ MUHIM: pytz obyekt
+
+TIMEZONE = pytz.timezone("Asia/Tashkent")
 UNITS = "metric"
 LANG = "uz"
 
-
-
-# ================================
-
 bot = Bot(token=TELEGRAM_TOKEN)
 
-
+# === Ob-havo olish funksiyasi ===
 def get_weather(city_name: str):
     url = "https://api.openweathermap.org/data/2.5/weather"
     params = {
@@ -48,19 +48,16 @@ def get_weather(city_name: str):
     r.raise_for_status()
     return r.json()
 
-
+# === Xabar formatlash funksiyasi ===
 def format_weather_message(data: dict):
-    # === Sana va joy ===
     now = datetime.now(TIMEZONE)
-    sana = now.strftime("%d-%B %Y")  # masalan: 15-Oktyabr 2025
+    sana = now.strftime("%d-%B %Y")
     sana = sana.replace("January", "Yanvar").replace("February", "Fevral").replace("March", "Mart") \
                .replace("April", "Aprel").replace("May", "May").replace("June", "Iyun") \
                .replace("July", "Iyul").replace("August", "Avgust").replace("September", "Sentabr") \
                .replace("October", "Oktabr").replace("November", "Noyabr").replace("December", "Dekabr")
 
     name = data.get("name")
-
-    # === Ob-havo holati (tarjima) ===
     weather_en = data["weather"][0]["main"].lower()
     weather_map = {
         "clear": "ochiq osmon",
@@ -68,7 +65,7 @@ def format_weather_message(data: dict):
         "rain": "yomgʻir",
         "drizzle": "mayda yomgʻir",
         "thunderstorm": "momaqaldiroq",
-        "snow": "qor yogʻmoqda",
+        "snow": "qor",
         "mist": "tuman",
         "fog": "tuman",
         "haze": "tutunli",
@@ -81,7 +78,6 @@ def format_weather_message(data: dict):
     }
     weather = weather_map.get(weather_en, data["weather"][0]["description"].capitalize())
 
-    # === Asosiy ma’lumotlar ===
     temp = data["main"]["temp"]
     feels = data["main"].get("feels_like")
     humidity = data["main"].get("humidity")
@@ -90,17 +86,13 @@ def format_weather_message(data: dict):
     sunset_ts = data.get("sys", {}).get("sunset")
 
     tz = TIMEZONE
-
     def ts_to_local(ts):
-        if not ts:
-            return "—"
-        return datetime.fromtimestamp(ts, tz).strftime("%H:%M")
+        return datetime.fromtimestamp(ts, tz).strftime("%H:%M") if ts else "—"
 
     sunrise = ts_to_local(sunrise_ts)
     sunset = ts_to_local(sunset_ts)
-    degree_sign = "°C" if UNITS == "metric" else "°F"
+    degree_sign = "°C"
 
-    # === Yakuniy xabar ===
     msg = (
         f"📅 *{sana}* kuni *{name}* shahrida kutilayotgan ob-havo maʼlumoti:\n\n"
         f"🔹 Holat: {weather}\n"
@@ -114,40 +106,35 @@ def format_weather_message(data: dict):
 
     return msg
 
-
-
+# === Xabar yuborish funksiyasi ===
 async def send_weather():
     try:
         data = get_weather(CITY_NAME)
         text = format_weather_message(data)
         await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="Markdown")
-        print(f"[{datetime.now()}] ✅ Ob-havo yuborildi.")
+        print(f"[{datetime.now()}] ✅ Xabar yuborildi")
     except Exception as e:
         print("❌ Xatolik:", e)
 
-    except Exception as e:
-        print("❌ Umumiy xatolik:", e)
-
-
-
+# === Rejalashtiruvchi (scheduler) ===
 async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
-    times = [(12,55),(13,10)]
+
+    # Har kuni 12:55 va 19:00 da yuborish
+    times = [(12, 55), (19, 0)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
-        scheduler.add_job(send_weather, trigger=trigger, id=f"weather_{hour}_{minute}")
+        scheduler.add_job(send_weather, trigger=trigger)
+
     scheduler.start()
 
-    print("Scheduler ishga tushdi. Quyidagi vaqtlarda xabar yuboriladi:")
+    print("✅ Scheduler ishga tushdi. Quyidagi vaqtlarda xabar yuboriladi:")
     for hour, minute in times:
         print(f" - {hour:02d}:{minute:02d}")
-    # Hozir test uchun bir marta yuborishni istasangiz — quyidagini yoqing:
-    # await send_weather()
 
     # Botni fon rejimida ushlab turish
     while True:
         await asyncio.sleep(60)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
