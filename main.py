@@ -117,14 +117,23 @@ def format_weather_message(data: dict):
     return msg
 
 
+
 async def send_weather():
     try:
         data = get_weather(CITY_NAME)
         text = format_weather_message(data)
-        await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="Markdown")
-        print(f"[{datetime.now()}] ✅ Ob-havo yuborildi.")
+
+        # 🔹 Har bir chat ID ga alohida yuborish
+        for chat_id in CHAT_IDS:
+            try:
+                await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+                print(f"[{datetime.now()}] ✅ Xabar yuborildi: {chat_id}")
+            except Exception as e:
+                print(f"❌ Xatolik ({chat_id}): {e}")
+
     except Exception as e:
-        print("❌ Xatolik:", e)
+        print("❌ Umumiy xatolik:", e)
+
 
 
 async def main():
