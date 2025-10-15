@@ -22,16 +22,14 @@ threading.Thread(target=run).start()
 # ========== SOZLAMALAR ==========
 load_dotenv()  # .env fayldan ma'lumotlarni yuklaydi
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_IDS = os.getenv("CHAT_IDS")
 OWM_API_KEY = os.getenv("OWM_API_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "Bekobod,UZ")
 TIMEZONE = pytz.timezone("Asia/Tashkent")  # ⚠️ MUHIM: pytz obyekt
 UNITS = "metric"
 LANG = "uz"
 
-# 🔹 Bir nechta chat ID larni .env orqali olish
-CHAT_IDS = os.getenv("CHAT_IDS", "")
-# Masalan .env faylda: CHAT_IDS=-1001234567890,-1009876543210,123456789
-CHAT_IDS = [int(x.strip()) for x in CHAT_IDS.split(",") if x.strip()]
+
 
 # ================================
 
@@ -122,14 +120,10 @@ async def send_weather():
     try:
         data = get_weather(CITY_NAME)
         text = format_weather_message(data)
-
-        # 🔹 Har bir chat ID ga alohida yuborish
-        for chat_id in CHAT_IDS:
-            try:
-                await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
-                print(f"[{datetime.now()}] ✅ Xabar yuborildi: {chat_id}")
-            except Exception as e:
-                print(f"❌ Xatolik ({chat_id}): {e}")
+        await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="Markdown")
+        print(f"[{datetime.now()}] ✅ Ob-havo yuborildi.")
+    except Exception as e:
+        print("❌ Xatolik:", e)
 
     except Exception as e:
         print("❌ Umumiy xatolik:", e)
@@ -138,7 +132,7 @@ async def send_weather():
 
 async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
-    times = [(12, 28), (12, 30), (12, 31)]
+    times = [(12, 45), (12, 30), (12, 31)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger, id=f"weather_{hour}_{minute}")
