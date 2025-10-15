@@ -91,7 +91,7 @@ async def send_weather():
 
 async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
-    times = [(7, 50), (8, 10), (8, 20)]
+    times = [(7, 50), (8, 35), (8, 40)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger, id=f"weather_{hour}_{minute}")
