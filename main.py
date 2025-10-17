@@ -11,7 +11,6 @@ from flask import Flask
 import threading
 import random
 
-
 # === Flask Web Server (Render.com uptime uchun) ===
 app = Flask("bot")
 
@@ -27,9 +26,12 @@ threading.Thread(target=run).start()
 # === .env dan sozlamalar ===
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = int(os.getenv("CHAT_ID"))  # faqat bitta ID
 OWM_API_KEY = os.getenv("OWM_API_KEY")
 CITY_NAME = os.getenv("CITY_NAME", "Bekobod,UZ")
+
+# ✅ Bir nechta chat ID (vergul bilan yoziladi)
+# Masalan: CHAT_IDS=-10012345,-10067890,123456789
+CHAT_IDS = [x.strip() for x in os.getenv("CHAT_IDS", "").split(",") if x.strip()]
 
 TIMEZONE = pytz.timezone("Asia/Tashkent")
 UNITS = "metric"
@@ -54,18 +56,11 @@ def get_weather(city_name: str):
 def get_greeting(now):
     hour = now.hour
     if 5 <= hour < 11:
-        return (
-            "🌅 *Xayrli tong!*\n"
-            "Yangi kun boshlandi. Sizga unumli ishlar va iliq kayfiyat tilaymiz."
-        )
+        return "🌅 *Xayrli tong!* Yangi kun boshlandi ☀️"
     elif 11 <= hour < 18:
-        return (
-            "🌤 *Xayrli kun!* 🌞\n"
-        )
+        return "🌤 *Xayrli kun!* 🌞"
     else:
-        return (
-            "🌙 *Xayrli oqshom!* 🌌\n"
-        )
+        return "🌙 *Xayrli oqshom!* 🌌"
 
 
 # === Xabar formatlash funksiyasi ===
@@ -118,24 +113,20 @@ def format_weather_message(data: dict):
     greeting = get_greeting(now)
     
     msg = (
-    f"{greeting}\n\n"
-    f"🌤 *{name}* shahrining ayni vaqtdagi ob-havo ma'lumotlari ({sana} -yil , soat {soat})\n\n"
-    f"🔸 Havo holati: *{weather}*\n"
-    f"🌡 Harorat: *{temp}{degree_sign}* (Tuyulishi: {feels}{degree_sign})\n"
-    f"💧 Namlik: {humidity}%\n"
-    f"🌬 Shamol: {wind} m/s\n"
-    f"🌅 Quyosh chiqishi: {sunrise}\n"
-    f"🌇 Quyosh botishi: {sunset}\n\n"
-    f"📍 *Tashkent vaqti bo‘yicha ma’lumot*"
-)
-
+        f"{greeting}\n\n"
+        f"📍 *{name}* shahrining ob-havo ma'lumotlari ({sana}, soat {soat})\n\n"
+        f"🔸 Havo holati: *{weather}*\n"
+        f"🌡 Harorat: *{temp}{degree_sign}* (Tuyulishi: {feels}{degree_sign})\n"
+        f"💧 Namlik: {humidity}%\n"
+        f"🌬 Shamol: {wind} m/s\n"
+        f"🌅 Quyosh chiqishi: {sunrise}\n"
+        f"🌇 Quyosh botishi: {sunset}\n\n"
+        f"🕒 *Tashkent vaqti bo‘yicha ma’lumot*"
+    )
     return msg
 
 
-# === Xabar yuborish funksiyasi (rasm bilan) ===
-
-
-# === Xabar yuborish funksiyasi (random rasm bilan) ===
+# === Xabar yuborish (rasm bilan, bir nechta chatga) ===
 async def send_weather():
     try:
         data = get_weather(CITY_NAME)
@@ -153,7 +144,7 @@ async def send_weather():
         else:
             time_period = "evening"
 
-        # === Ob-havo holatlari bo‘yicha rasm variantlari ===
+        # === Rasm variantlari ===
         image_map = {
             "clear": [f"images/{time_period}_clear1.jpg", f"images/{time_period}_clear2.jpg"],
             "clouds": [f"images/{time_period}_clouds1.jpg", f"images/{time_period}_clouds2.jpg"],
@@ -167,49 +158,48 @@ async def send_weather():
             "smoke": [f"images/{time_period}_fog1.jpg"]
         }
 
-        # Agar holat yo‘q bo‘lsa, default variantlar
+        # Default rasm
         image_list = image_map.get(weather_en, [f"images/{time_period}_default1.jpg", "images/default.jpg"])
-
-        # === Tasodifiy rasmni tanlash ===
         image_path = random.choice(image_list)
-
-        # Fayl mavjudligini tekshirish
         if not os.path.exists(image_path):
             image_path = "images/default.jpg"
 
-        # Xabarni yuborish
-        with open(image_path, "rb") as photo:
-            await bot.send_photo(
-                chat_id=CHAT_ID,
-                photo=photo,
-                caption=text,
-                parse_mode="Markdown"
-            )
-
-        print(f"[{datetime.now()}] ✅ Xabar rasm bilan yuborildi ({time_period}, {weather_en}, {os.path.basename(image_path)})")
+        # === Har bir chatga yuborish ===
+        for chat_id in CHAT_IDS:
+            try:
+                with open(image_path, "rb") as photo:
+                    await bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=text,
+                        parse_mode="Markdown"
+                    )
+                print(f"✅ {chat_id} ga yuborildi ({time_period}, {weather_en}, {os.path.basename(image_path)})")
+            except Exception as e:
+                print(f"⚠️ {chat_id} ga yuborishda xato: {e}")
 
     except Exception as e:
-        print("❌ Xatolik:", e)
+        print("❌ Umumiy xatolik:", e)
 
-# === Rejalashtiruvchi (scheduler) ===
+
+# === Rejalashtirish (scheduler) ===
 async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
-    # Har kuni 12:55 va 19:00 da yuborish
-    times = [(1,14), (15, 55), (1,16)]
+    # Xabar yuboriladigan vaqtlar
+    times = [(1, 39), (1, 41)]  # soat 08:00 va 20:00 da
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
 
     scheduler.start()
-
     print("✅ Scheduler ishga tushdi. Quyidagi vaqtlarda xabar yuboriladi:")
     for hour, minute in times:
         print(f" - {hour:02d}:{minute:02d}")
 
-    # Botni fon rejimida ushlab turish
     while True:
         await asyncio.sleep(60)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
