@@ -196,7 +196,7 @@ async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
     # Har kuni 12:55 va 19:00 da yuborish
-    times = [(00,50), (00, 55), (1,00)]
+    times = [(1,14), (15, 55), (1,16)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
