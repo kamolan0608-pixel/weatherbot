@@ -9,6 +9,8 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 import threading
+import random
+
 
 # === Flask Web Server (Render.com uptime uchun) ===
 app = Flask("bot")
@@ -131,36 +133,51 @@ def format_weather_message(data: dict):
 
 
 # === Xabar yuborish funksiyasi (rasm bilan) ===
+
+
+# === Xabar yuborish funksiyasi (random rasm bilan) ===
 async def send_weather():
     try:
         data = get_weather(CITY_NAME)
         text = format_weather_message(data)
 
-        # ob-havo holatini olish
+        now = datetime.now(TIMEZONE)
+        hour = now.hour
         weather_en = data["weather"][0]["main"].lower()
 
-        # ob-havoga mos rasm fayllari xaritasi
+        # === Kun vaqtini aniqlash ===
+        if 5 <= hour < 11:
+            time_period = "morning"
+        elif 11 <= hour < 18:
+            time_period = "day"
+        else:
+            time_period = "evening"
+
+        # === Ob-havo holatlari bo‘yicha rasm variantlari ===
         image_map = {
-            "clear": "images/clear.jpg",        # ☀️ quyoshli
-            "clouds": "images/clouds.jpg",      # ☁️ bulutli
-            "rain": "images/rain.jpg",          # 🌧️ yomg‘irli
-            "drizzle": "images/rain.jpg",       # mayda yomg‘ir
-            "thunderstorm": "images/storm.jpg", # momaqaldiroq
-            "snow": "images/snow.jpg",          # ❄️ qor
-            "mist": "images/fog.jpg",           # tuman
-            "fog": "images/fog.jpg",            # tuman
-            "haze": "images/fog.jpg",           # tutunli
-            "smoke": "images/fog.jpg"           # tutunli
+            "clear": [f"images/{time_period}_clear1.jpg", f"images/{time_period}_clear2.jpg"],
+            "clouds": [f"images/{time_period}_clouds1.jpg", f"images/{time_period}_clouds2.jpg"],
+            "rain": [f"images/{time_period}_rain1.jpg", f"images/{time_period}_rain2.jpg"],
+            "drizzle": [f"images/{time_period}_rain1.jpg", f"images/{time_period}_rain2.jpg"],
+            "thunderstorm": [f"images/{time_period}_storm1.jpg"],
+            "snow": [f"images/{time_period}_snow1.jpg"],
+            "mist": [f"images/{time_period}_fog1.jpg", f"images/{time_period}_fog2.jpg"],
+            "fog": [f"images/{time_period}_fog1.jpg", f"images/{time_period}_fog2.jpg"],
+            "haze": [f"images/{time_period}_fog1.jpg"],
+            "smoke": [f"images/{time_period}_fog1.jpg"]
         }
 
-        # Agar mos rasm topilmasa — default rasmni olamiz
-        image_path = image_map.get(weather_en, "images/default.jpg")
+        # Agar holat yo‘q bo‘lsa, default variantlar
+        image_list = image_map.get(weather_en, [f"images/{time_period}_default1.jpg", "images/default.jpg"])
 
-        # Fayl mavjudligini tekshirish (xatolik oldini olish uchun)
+        # === Tasodifiy rasmni tanlash ===
+        image_path = random.choice(image_list)
+
+        # Fayl mavjudligini tekshirish
         if not os.path.exists(image_path):
             image_path = "images/default.jpg"
 
-        # Rasm bilan xabar yuborish
+        # Xabarni yuborish
         with open(image_path, "rb") as photo:
             await bot.send_photo(
                 chat_id=CHAT_ID,
@@ -169,18 +186,17 @@ async def send_weather():
                 parse_mode="Markdown"
             )
 
-        print(f"[{datetime.now()}] ✅ Xabar rasm bilan yuborildi ({weather_en})")
+        print(f"[{datetime.now()}] ✅ Xabar rasm bilan yuborildi ({time_period}, {weather_en}, {os.path.basename(image_path)})")
 
     except Exception as e:
         print("❌ Xatolik:", e)
-
 
 # === Rejalashtiruvchi (scheduler) ===
 async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
     # Har kuni 12:55 va 19:00 da yuborish
-    times = [(00,38), (12, 10), (19,10)]
+    times = [(00,50), (00, 55), (1,00)]
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
