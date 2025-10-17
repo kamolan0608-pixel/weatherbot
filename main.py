@@ -129,15 +129,51 @@ def format_weather_message(data: dict):
 
     return msg
 
-# === Xabar yuborish funksiyasi ===
+
+# === Xabar yuborish funksiyasi (rasm bilan) ===
 async def send_weather():
     try:
         data = get_weather(CITY_NAME)
         text = format_weather_message(data)
-        await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode="Markdown")
-        print(f"[{datetime.now()}] ✅ Xabar yuborildi")
+
+        # ob-havo holatini olish
+        weather_en = data["weather"][0]["main"].lower()
+
+        # ob-havoga mos rasm fayllari xaritasi
+        image_map = {
+            "clear": "images/clear.jpg",        # ☀️ quyoshli
+            "clouds": "images/clouds.jpg",      # ☁️ bulutli
+            "rain": "images/rain.jpg",          # 🌧️ yomg‘irli
+            "drizzle": "images/rain.jpg",       # mayda yomg‘ir
+            "thunderstorm": "images/storm.jpg", # momaqaldiroq
+            "snow": "images/snow.jpg",          # ❄️ qor
+            "mist": "images/fog.jpg",           # tuman
+            "fog": "images/fog.jpg",            # tuman
+            "haze": "images/fog.jpg",           # tutunli
+            "smoke": "images/fog.jpg"           # tutunli
+        }
+
+        # Agar mos rasm topilmasa — default rasmni olamiz
+        image_path = image_map.get(weather_en, "images/default.jpg")
+
+        # Fayl mavjudligini tekshirish (xatolik oldini olish uchun)
+        if not os.path.exists(image_path):
+            image_path = "images/default.jpg"
+
+        # Rasm bilan xabar yuborish
+        with open(image_path, "rb") as photo:
+            await bot.send_photo(
+                chat_id=CHAT_ID,
+                photo=photo,
+                caption=text,
+                parse_mode="Markdown"
+            )
+
+        print(f"[{datetime.now()}] ✅ Xabar rasm bilan yuborildi ({weather_en})")
+
     except Exception as e:
         print("❌ Xatolik:", e)
+
 
 # === Rejalashtiruvchi (scheduler) ===
 async def main():
