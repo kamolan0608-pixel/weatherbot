@@ -114,14 +114,13 @@ def format_weather_message(data: dict):
     
     msg = (
         f"{greeting}\n\n"
-        f"📍 *{name}* shahrining ob-havo ma'lumotlari ({sana}, soat {soat})\n\n"
+        f"📍 *{name}* shahrining ob-havo ma'lumotlari ({sana}-yil, soat {soat})\n\n"
         f"🔸 Havo holati: *{weather}*\n"
         f"🌡 Harorat: *{temp}{degree_sign}* (Tuyulishi: {feels}{degree_sign})\n"
         f"💧 Namlik: {humidity}%\n"
         f"🌬 Shamol: {wind} m/s\n"
         f"🌅 Quyosh chiqishi: {sunrise}\n"
         f"🌇 Quyosh botishi: {sunset}\n\n"
-        f"🕒 *Tashkent vaqti bo‘yicha ma’lumot*"
     )
     return msg
 
