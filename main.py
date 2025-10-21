@@ -186,7 +186,7 @@ async def main():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
     # Xabar yuboriladigan vaqtlar
-    times = [(7,10), (12,10), (20,25)]  # soat 08:00 va 20:00 da
+    times = [(7,10), (12,10), (20,45)]  # soat 08:00 va 20:00 da
     for hour, minute in times:
         trigger = CronTrigger(hour=hour, minute=minute, timezone=TIMEZONE)
         scheduler.add_job(send_weather, trigger=trigger)
